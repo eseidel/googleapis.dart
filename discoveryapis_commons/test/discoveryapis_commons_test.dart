@@ -965,6 +965,30 @@ void main() {
             );
       });
 
+      test('non-json-error-body-is-read', () async {
+        final body = StreamController<List<int>>();
+        body.add(utf8.encode('<html>No such object</html>'));
+        unawaited(body.close());
+        httpMock.register(
+          expectAsync2(
+            (http.BaseRequest request, string) async => http.StreamedResponse(
+              body.stream,
+              404,
+              headers: {'content-type': 'text/html; charset=UTF-8'},
+            ),
+          ),
+          false,
+        );
+        await expectLater(
+          requester.request('abc', 'GET'),
+          throwsA(
+            isDetailedApiRequestError.having((e) => e.status, 'status', 404),
+          ),
+        );
+        // The body was read to the end.
+        await body.done.timeout(const Duration(seconds: 1));
+      });
+
       test('normal-199', () {
         makeNormal199Error();
         expect(requester.request('abc', 'GET'), throwsA(isApiRequestError));

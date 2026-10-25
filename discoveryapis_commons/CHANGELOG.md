@@ -1,3 +1,8 @@
+## 1.0.9-wip
+
+- Read the body of a non-JSON error response before throwing, so the
+  connection is released instead of leaking.
+
 ## 1.0.8
 
 - Fix detection of web usage.

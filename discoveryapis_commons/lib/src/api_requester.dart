@@ -327,6 +327,10 @@ Future<http.StreamedResponse> validateResponse(
           jsonResponse: jsonResponse as Map<String, dynamic>,
         );
       }
+    } else {
+      // Read the body even though it is of no use: an unread body keeps the
+      // connection busy, so it is never reused or closed.
+      await response.stream.drain<void>();
     }
     throw client_requests.DetailedApiRequestError(
       statusCode,
