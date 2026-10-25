@@ -966,13 +966,23 @@ void main() {
       });
 
       test('non-json-error-body-is-read', () async {
-        final body = StreamController<List<int>>();
-        body.add(utf8.encode('<html>No such object</html>'));
-        unawaited(body.close());
+        var bodyRead = false;
+        final body =
+            Stream<List<int>>.fromIterable([
+              utf8.encode('<html>No such'),
+              utf8.encode(' object</html>'),
+            ]).transform(
+              StreamTransformer<List<int>, List<int>>.fromHandlers(
+                handleDone: (sink) {
+                  bodyRead = true;
+                  sink.close();
+                },
+              ),
+            );
         httpMock.register(
           expectAsync2(
             (http.BaseRequest request, string) async => http.StreamedResponse(
-              body.stream,
+              body,
               404,
               headers: {'content-type': 'text/html; charset=UTF-8'},
             ),
@@ -985,8 +995,26 @@ void main() {
             isDetailedApiRequestError.having((e) => e.status, 'status', 404),
           ),
         );
-        // The body was read to the end.
-        await body.done.timeout(const Duration(seconds: 1));
+        expect(bodyRead, isTrue);
+      });
+
+      test('non-json-error-body-read-failure-keeps-status', () async {
+        httpMock.register(
+          expectAsync2(
+            (http.BaseRequest request, string) async => http.StreamedResponse(
+              Stream<List<int>>.error(http.ClientException('reset')),
+              503,
+              headers: {'content-type': 'text/html'},
+            ),
+          ),
+          false,
+        );
+        await expectLater(
+          requester.request('abc', 'GET'),
+          throwsA(
+            isDetailedApiRequestError.having((e) => e.status, 'status', 503),
+          ),
+        );
       });
 
       test('normal-199', () {

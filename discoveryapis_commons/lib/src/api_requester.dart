@@ -329,8 +329,11 @@ Future<http.StreamedResponse> validateResponse(
       }
     } else {
       // Read the body even though it is of no use: an unread body keeps the
-      // connection busy, so it is never reused or closed.
-      await response.stream.drain<void>();
+      // connection busy, so it is never reused or closed. A failed read has
+      // already torn the connection down, and the status is what matters.
+      try {
+        await response.stream.drain<void>();
+      } catch (_) {}
     }
     throw client_requests.DetailedApiRequestError(
       statusCode,
