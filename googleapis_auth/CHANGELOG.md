@@ -1,3 +1,9 @@
+## 2.3.6-wip
+
+- `clientViaApplicationDefaultCredentials` closes the HTTP client it creates
+  when no `baseClient` is given once the returned client is closed. Before,
+  that client was never closed, so its connections stayed open.
+
 ## 2.3.5
 
 - `AuthenticatedClient` and `ApiKeyClient` now keep the `contentLength`,

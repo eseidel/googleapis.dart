@@ -13,10 +13,56 @@ import 'package:http/http.dart';
 import 'auth_endpoints.dart';
 import 'auth_functions.dart';
 import 'auth_http_utils.dart';
+import 'http_client_base.dart';
 import 'impersonated_auth_client.dart';
 import 'service_account_client.dart';
 import 'service_account_credentials.dart';
 import 'sts_auth_client.dart';
+
+/// Returns the client [create] makes with [baseClient], which closes
+/// [baseClient] when it is closed.
+///
+/// [create] is handed a client that closing does not close, since the clients
+/// it makes may share it and some of them close it. If [create] throws,
+/// [baseClient] is closed.
+Future<AutoRefreshingAuthClient> closingBaseClient(
+  Client baseClient,
+  Future<AutoRefreshingAuthClient> Function(Client baseClient) create,
+) async {
+  try {
+    return _BaseClientClosingClient(
+      await create(nonClosingClient(baseClient)),
+      baseClient,
+    );
+  } catch (_) {
+    baseClient.close();
+    rethrow;
+  }
+}
+
+class _BaseClientClosingClient extends DelegatingClient
+    implements AutoRefreshingAuthClient {
+  final AutoRefreshingAuthClient _client;
+  final Client _ownedBaseClient;
+
+  _BaseClientClosingClient(this._client, this._ownedBaseClient)
+    : super(_client);
+
+  @override
+  AccessCredentials get credentials => _client.credentials;
+
+  @override
+  Stream<AccessCredentials> get credentialUpdates => _client.credentialUpdates;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) => _client.send(request);
+
+  @override
+  void close() {
+    super.close();
+    _ownedBaseClient.close();
+  }
+}
 
 Future<AutoRefreshingAuthClient> fromApplicationsCredentialsFile(
   File file,
