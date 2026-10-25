@@ -11,9 +11,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:googleapis_auth/googleapis_auth.dart';
 import 'package:googleapis_auth/src/adc_utils.dart'
-    show closingBaseClient, fromApplicationsCredentialsFile;
+    show fromApplicationsCredentialsFile;
 import 'package:googleapis_auth/src/known_uris.dart';
 import 'package:http/http.dart';
 import 'package:test/test.dart';
@@ -23,44 +22,6 @@ import 'package:test_process/test_process.dart';
 import 'test_utils.dart';
 
 void main() {
-  group('closingBaseClient', () {
-    final credentials = AccessCredentials(
-      AccessToken(
-        'Bearer',
-        'atoken',
-        DateTime.now().toUtc().add(const Duration(hours: 1)),
-      ),
-      'refresh',
-      [],
-    );
-
-    test('closes the base client when the returned client is closed', () async {
-      final base = mockClient((request) async => Response('hello world', 200));
-      final c = await closingBaseClient(
-        base,
-        (baseClient) async => autoRefreshingClient(
-          ClientId('id', 'secret'),
-          credentials,
-          baseClient,
-        ),
-      );
-      expect(c.credentials, same(credentials));
-
-      final r = await c.get(Uri.https('example.com', '/'));
-      expect(r.body, 'hello world');
-
-      c.close();
-    });
-
-    test('closes the base client when creating the client fails', () async {
-      final base = mockClient((request) async => Response('', 500));
-      await expectLater(
-        closingBaseClient(base, (baseClient) async => throw StateError('no')),
-        throwsStateError,
-      );
-    });
-  });
-
   test('authorized_user credentials', () async {
     await d
         .file(

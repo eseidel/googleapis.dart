@@ -56,22 +56,10 @@ Future<AutoRefreshingAuthClient> clientViaApplicationDefaultCredentials({
   required List<String> scopes,
   Client? baseClient,
 }) async {
-  if (baseClient != null) {
-    return _clientViaApplicationDefaultCredentials(
-      scopes,
-      nonClosingClient(baseClient),
-    );
-  }
-  return closingBaseClient(
-    Client(),
-    (baseClient) => _clientViaApplicationDefaultCredentials(scopes, baseClient),
-  );
-}
+  // With no baseClient, each client made below creates its own and closes it
+  // when it is closed.
+  if (baseClient != null) baseClient = nonClosingClient(baseClient);
 
-Future<AutoRefreshingAuthClient> _clientViaApplicationDefaultCredentials(
-  List<String> scopes,
-  Client baseClient,
-) async {
   // If env var specifies a file to load credentials from we'll do that.
   final credsEnv = Platform.environment['GOOGLE_APPLICATION_CREDENTIALS'];
   if (credsEnv != null && credsEnv.isNotEmpty) {
